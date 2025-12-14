@@ -30,6 +30,8 @@ dependencies:
     - jinja2==3.1.4                  # For HTML Templates
     - websockets==12.0               # For Real-time updates
     - python-multipart==0.0.20       # Handles image uploads
+    - python-dotenv==1.2.1
+
     # 3. Data & Utilities
     - sqlalchemy==2.0.34             # Database ORM
     - requests==2.32.3               # For API calls

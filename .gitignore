@@ -217,3 +217,10 @@ __marimo__/
 
 # Testing settings
 app/test_settings.py
+
+
+
+*.db
+*.jpg
+*.png
+.DS_Store

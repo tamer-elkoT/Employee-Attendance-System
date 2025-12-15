@@ -8,10 +8,20 @@ Taking the attendance of the employees using face recognition
 1) Download and install MiniConda from [here] (https://www.anaconda.com/docs/getting-started/miniconda/install#linux-terminal-installer)
 2) create a new environment using the following commands:
 ```bash
-$ conda create -n employee_env python=3.10
+$ conda env create -f environment.yml
 ```
 3) Activate the environment:
 $ conda activate employee_env
+
+### Setup the enviroment variables
+
+``` bash 
+$ cp .env.example .env
+```
+
+set you environment variables in the `.env` file. Like 
+
+
 
 
 

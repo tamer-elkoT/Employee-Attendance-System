@@ -1,38 +1,36 @@
-name: employee_env
+name: Employee-Attendance-System
 channels:
   - conda-forge
   - defaults
 dependencies:
-  # --- CORE SYSTEM ---
-  - python=3.10.14          # Pinned to specific patch for stability
-  - pip=24.0                # Ensure pip itself is stable
+  # --- Core System ---
+  - python=3.10.14          # Stable Python version
+  - pip=24.0                # Package installer
+  - cmake=3.29.2            # Needed to build C++ extensions
+  - make=4.3                # Build tool
+  - gxx_linux-64=12.3.0     # The Linux C++ Compiler (Critical for dlib)
   
-  # --- BUILD TOOLS (Conda handles these best) ---
-  - cmake=3.29.2            # Required to build dlib extensions
-  - make=4.3                # Required for build scripts
-  - gxx_linux-64=12.3.0     # The C++ Compiler (Critical for WSL)
+  # --- Math & AI Libraries ---
+  - dlib=19.24.2            # Core face math library (Pre-compiled binary)
+  - numpy=1.26.4            # Pinned to avoid version 2.0 breaking changes
+  - pandas=2.2.2            # Data handling
   
-  # --- HEAVY MATH LIBRARIES (Pre-compiled binaries) ---
-  - dlib=19.24.2            # The hardest lib. We use Conda's pre-built binary.
-  - numpy=1.26.4            # Pinned to 1.26.x. DO NOT USE Numpy 2.0+ yet (it breaks face_recognition).
-  - pandas=2.2.2            # For data handling
-  
-  # --- PYTHON PACKAGES (Pip) ---
+  # --- Pip Packages ---
   - pip:
-    # 1. The Face Stack
-    - face-recognition==1.3.0        # The standard version
-    - face-recognition-models==0.3.0
-    - opencv-python-headless==4.10.0.84 # "Headless" is mandatory for WSL servers
+    # 1. Deep Learning Stack (For Registration)
+    - tensorflow==2.16.1    # Google's AI engine
+    - mtcnn==0.1.1          # The "Smart" Face Detector
     
-    # 2. The Web Stack (FastAPI)
-    - fastapi==0.115.0               # Recent stable version
-    - uvicorn[standard]==0.30.6      # The ASGI server      
-    - jinja2==3.1.4                  # For HTML Templates
-    - websockets==12.0               # For Real-time updates
-    - python-multipart==0.0.20       # Handles image uploads
-    - python-dotenv==1.2.1
-
-    # 3. Data & Utilities
-    - sqlalchemy==2.0.34             # Database ORM
-    - requests==2.32.3               # For API calls
-    - typing-extensions==4.12.2      # Type compatibility
+    # 2. Fast AI Stack (For Daily Use)
+    - face-recognition==1.3.0        # Wrapper for dlib
+    - face-recognition-models==0.3.0 # Pre-trained models
+    - opencv-python-headless==4.10.0.84 # "Headless" = No GUI (Safe for Servers)
+    
+    # 3. Web Stack (FastAPI)
+    - fastapi==0.115.0      # The Web Framework
+    - uvicorn[standard]==0.30.6 # The Server
+    - python-multipart==0.0.9 # For uploading images
+    - jinja2==3.1.4         # HTML Templates
+    - python-dotenv==1.0.1  # For reading .env files
+    - sqlalchemy==2.0.34    # Database Manager
+    - typing-extensions==4.12.2

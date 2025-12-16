@@ -23,7 +23,7 @@ def load_image_from_bytes(image_bytes: bytes):
 async  def detect_faces(files):
     """
     Takes a list of 5 images. Uses MTCNN to find the best face.
-    Returns: Best Encoding (Bytes), Best Index (Int)
+    Returns: Best Encoding (Bytes), Best Index (Int), Best Confidence (Float)
     """
 
     best_confidence = 0.0
@@ -129,7 +129,7 @@ def find_match(known_employees, live_encoding_bytes):
             tolerance=settings.FACE_TOLRANCE # Returns True if the face matches (distance ≤ tolerance) False otherwise.
         )[0] # compare_faces returns a list of booleans indicating matches
         
-        if match:
+        if any(match):
             distance = face_recognition.face_distance( # Calculate the distance between the live encoding and known encoding
                 [known_encoding], live_encoding
             )[0] # face_distance returns a list of distances

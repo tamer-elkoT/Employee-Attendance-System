@@ -73,6 +73,8 @@ $ uvicorn main:app --reload --host 0.0.0.0 --port 5000
 ''' bash
 $ streamlit run app.py
 '''
+# To Give access to ngrok to open streamlit from browser
+ $ streamlit run frontend.py --server.port=8501 --server.enableCORS=false --server.enableXsrfProtection=false
 ### Run into ngrok
 for windows
 '''bash
@@ -91,6 +93,15 @@ NOTE: To stop the Sever press CTRL + C
 
 
 
-# Create Virtual Enviroment 
-
-
+# Future Work 
+- Save the History of the logining for each day
+- Add a data validation to make it once login
+- Improve the UI of the app using Another professional too than streamlit
+- The user have the ability to add more info about him such as upload profile photo or take one , add connect with email address and phone number, position
+- How to connect this app with real time camera using rasperiby 
+- Recognize if this Image is Real or Fake to reduce cheating
+- Deploye The model to Asure or AWS
+- Modify the Data Base and make it more professional using SQLAlchmy
+- Add Data Validation for the input that the user enter when he register for the first time for example First Name , Last Name , Password, email , etc..
+- Give permessions For user and Admin when logging in so the admin could add new user and can access the attendance of each employee from it's dashboard by searching by the Id or name of employee
+- Get the active working ours without leaving the office or playing 

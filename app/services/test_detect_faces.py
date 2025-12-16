@@ -1,8 +1,10 @@
 import asyncio
-from app.services.face_logic import detect_faces_mtcnn
+from app.services.face_logic import detect_faces
 from io import BytesIO
 import os
 import pickle
+import cv2
+import matplotlib.pyplot as plt
 
 class FakeUploadFile:
     def __init__(self,path):
@@ -27,14 +29,26 @@ images_paths = [
 
 files = [FakeUploadFile(path) for path in images_paths]
 
-async def test_detect_faces_mtcnn():
-    best_encoding_bytes, best_index = await detect_faces_mtcnn(files)
+async def show_best_face():
+    # Get the best face info
+    best_encoding_bytes, best_index, best_confidence = await detect_faces(files)
 
-    if best_encoding_bytes:
+    if best_index != -1:
+        best_image_path = images_paths[best_index]
         print(f"Best face found in image index: {best_index}")
+        print(f"Confidence", best_confidence)
         encoding = pickle.loads(best_encoding_bytes)
         print(f"Encoding bytes length: {len(encoding[0])}")
+        print(f"Best image path", best_image_path)
+
+        # load and show the image
+        img = cv2.imread(best_image_path)
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        plt.imshow(img_rgb)
+        plt.axis("off")
+        plt.show(block=True)
     else:
         print("No faces detected in any of the images.")
+# Run the async function
+asyncio.run(show_best_face())
 
-asyncio.run(test_detect_faces_mtcnn())

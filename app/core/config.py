@@ -12,6 +12,7 @@ class Settings:
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./attendance.db")
     # Get tolerance. Crucially, wrap it in float() because environment variables are always strings of text.
     FACE_TOLRANCE: float = float(os.getenv("FACE_TOLERANCE",0.5))
+    CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD",0.90))
 
 
 settings = Settings()

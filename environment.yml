@@ -35,3 +35,6 @@ dependencies:
     - python-dotenv==1.0.1  # For reading .env files
     - sqlalchemy==2.0.34    # Database Manager
     - typing-extensions==4.12.2
+    
+    # 4. UI / Frontend
+    - streamlit==1.29.0

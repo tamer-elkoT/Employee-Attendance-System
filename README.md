@@ -33,6 +33,9 @@ sentinel_pro/
 ├── templates/              # (HTML - No changes)
 ├── .env
 └── environment.yml
+# install WSL using this command
+# wsl --install
+
 # clone the repo
 
 ## Requirments
@@ -61,11 +64,33 @@ set you environment variables in the `.env` file. Like
 ``` bash
 $ uvicorn main:app --reload --host 0.0.0.0 --port 5000
 ```
+# How to run Streamlit App
+- open a new terminal
+- cd to your current root folder
+- activate the environment
+- run the command line in the terminal
+
+''' bash
+$ streamlit run app.py
+'''
+### Run into ngrok
+for windows
+'''bash
+$ ngrok http 8501 
+'''
+for wsl 
+''' bash
+$ ngrok.exe http 8501
+'''
+- copy the forwarding link like this: https://35c034e55843.ngrok-free.app
+- open it in browser and try the app.
+
+
+
 NOTE: To stop the Sever press CTRL + C
 
 
 
 # Create Virtual Enviroment 
 
-# install WSL using this command
-# wsl --install
+

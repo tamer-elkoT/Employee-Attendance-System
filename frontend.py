@@ -92,6 +92,7 @@ def login_page():
                     res = requests.post(f"{API_URL}/recognize", files=files)
                     data = res.json()
                     
+                    st.write("Debug - Raw Server Response:", data)
                     if data.get('status') == 'success':
                         st.session_state['logged_in'] = True
                         st.session_state['user_info'] = data

@@ -1,4 +1,4 @@
-import face_recognition 
+import face_recognition
 import numpy as np
 import cv2
 import pickle
@@ -19,7 +19,7 @@ def load_image_from_bytes(image_bytes: bytes):
     rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # Convert BGR to RGB
     return rgb_img
 
-# Logic : Detect Faces using MTCNN for Regesistration 
+# Logic : Detect Faces using MTCNN for Regesistration
 async  def detect_faces(files):
     """
     Takes a list of 5 images. Uses MTCNN to find the best face.
@@ -38,7 +38,7 @@ async  def detect_faces(files):
         # Load image from bytes to numpy RGB Array
         rgb_img = load_image_from_bytes(image_bytes)
         # Detect faces using MTCNN
-        detections = mtcnn_detector.detect_faces(rgb_img) # Get list of detected faces 
+        detections = mtcnn_detector.detect_faces(rgb_img) # Get list of detected faces
         # detection is a list of dicts with 'box', 'confidence', 'keypoints'
         #         detections = [
         #     {
@@ -61,24 +61,25 @@ async  def detect_faces(files):
             confidence = best_detection["confidence"]
         else:
             best_detection = None
-        
+
         # If confidence is higher than previous best, and above threshold, get the bounding box
         if confidence > best_confidence and confidence >= settings.CONFIDENCE_THRESHOLD:
             x, y, w, h = best_detection["box"] # Get the bounding box
-            # Convert from (x, y, w, h) to (top, right, bottom, left) format 
+            # Convert from (x, y, w, h) to (top, right, bottom, left) format
             # Because face_recognition expects (top, right, bottom, left)
             top, right, bottom, left = max(0,y), max(0,x+w), max(0, y+h), max(0,x)
             box = [(top, right, bottom, left)] # face_recognition expects a list of boxes
             # Get the face encoding using face_recognition
             try:
-                encoding = face_recognition.face_encodings(rgb_img, box) # Returns a list of encodings 
+                # Add [0] to get the vector, not the list
+                encoding = face_recognition.face_encodings(rgb_img, box)[0] # Returns a list of encodings
                 best_confidence = confidence
                 best_encoding_bytes = pickle.dumps(encoding) # Serialize encoding to bytes
                 best_index = i
 
             except IndexError:
-                continue 
-    
+                continue
+
     return best_encoding_bytes, best_index, best_confidence
 
 
@@ -89,8 +90,12 @@ def get_live_encoding(image_bytes):
     HOG (Histogram of Oriented Gradients) is a fast, CPU-friendly method to detect faces.
 
     """
+    try:
     # Load image from bytes to numpy RGB Array
-    rgb_img = load_image_from_bytes(image_bytes)
+        rgb_img = load_image_from_bytes(image_bytes)
+    except ValueError:
+        return None
+
     # Detect face locations using HOG
     boxes = face_recognition.face_locations(rgb_img) # Returns list of (top, right, bottom, left) tuples
     # if no faces detected, return None
@@ -104,14 +109,15 @@ def get_live_encoding(image_bytes):
     # This allows you to store the face encoding in a database or send it over the network.
     return pickle.dumps(encoding)
 
+# Logic Matching
 def find_match(known_employees, live_encoding_bytes):
     """
     Compares the live encoding with known employee encodings to find a match.
-    
+
     Parameters:
     - known_employees: List of Employee objects with known encodings
     - live_encoding_bytes: Serialized bytes of the live face encoding
-    
+
     Returns:
     - matched_employee: The Employee object that matches, or None if no match found
     - match_index: Index of the matched employee in the known_employees list, or -1 if no match
@@ -122,17 +128,20 @@ def find_match(known_employees, live_encoding_bytes):
     # Loop through known employees to find a match
     for emp in known_employees:
         # Convert the stored encoding for the current employee from bytes → NumPy array.
-        known_encoding = pickle.loads(emp.encoding) 
+        known_encoding = pickle.loads(emp.encoding)
         # compare the live encoding with the known encoding
-        match = face_recognition.compare_faces( # compare_faces calculates the distance between the new face and known faces.
-            [known_encoding], live_encoding,
-            tolerance=settings.FACE_TOLRANCE # Returns True if the face matches (distance ≤ tolerance) False otherwise.
-        )[0] # compare_faces returns a list of booleans indicating matches
-        
-        if any(match):
-            distance = face_recognition.face_distance( # Calculate the distance between the live encoding and known encoding
-                [known_encoding], live_encoding
-            )[0] # face_distance returns a list of distances
-        
+        # match = face_recognition.compare_faces( # compare_faces calculates the distance between the new face and known faces.
+        #     [known_encoding], live_encoding,
+        #     tolerance=settings.FACE_TOLRANCE # Returns True if the face matches (distance ≤ tolerance) False otherwise.
+        # )[0] # compare_faces returns a list of booleans indicating matches
+
+        # if any(match):
+        distance = face_recognition.face_distance( # Calculate the distance between the live encoding and known encoding
+            [known_encoding], live_encoding
+        )[0] # face_distance returns a list of distances
+
+        print(f"Debug: checking {emp.name} ... Distance: {distance:.4f} (Tolerance: {settings.FACE_TOLERANCE})" )
+        if distance < settings.FACE_TOLERANCE:
+
             return emp, known_employees.index(emp), distance
     return None, -1, None # No match found

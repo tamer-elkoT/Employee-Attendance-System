@@ -54,10 +54,10 @@ async def recognize(
     employees = db.query(Employee).all()
 
     # Compare between the known employees and live_encoding
-    employee,_,_ = find_match(employees, live_encoding)
+    employee,_,distance = find_match(employees, live_encoding)
 
     if employee:
-        return {"status": "sucess", "name": employee.name, "department":employee.department}
+        return {"status": "success", "name": employee.name, "department":employee.department}
     else:
         return {"status": "error", "msg": "Uknown"}
     

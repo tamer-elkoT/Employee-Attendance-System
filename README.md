@@ -9,8 +9,9 @@
 The project follows a scalable **MVC (Model-View-Controller)** architecture to ensure clean code separation and maintainability.
 
 ```text
-sentinel_pro/
-│
+EmpyVision/
+│__ .streamlit
+    |__ config.toml
 ├── app/
 │   ├── __init__.py
 │   ├── core/               # ⚙️ Config & Database connection

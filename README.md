@@ -73,6 +73,10 @@ conda env create -f environment.yml
 conda activate Employee-Attendance-System
 
 ```
+### (Optional) To know the name the Conda Environment that you have created so you can activate it directly run this code in Ubuntu Terminal :
+```bash
+conda env list
+```
 
 ### 3. Configure Environment Variables
 

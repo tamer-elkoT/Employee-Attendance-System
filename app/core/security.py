@@ -19,8 +19,8 @@ def get_password_hash(password):
     """Hash a plain password for secure storage."""
     return pwd_context.hash(password) # output example : $2b$12$K9jHq1l9v5YfD3EjGQvAxeB0w4h3Q.Kxk1X0h8uCzF6R0L5w1FZzK
 
-# Example 
-plain_password = "mysecretpassword"
-hashed_password = get_password_hash(plain_password)
+# # Example 
+# plain_password = "mysecretpassword"
+# hashed_password = get_password_hash(plain_password)
 
-print(hashed_password)
+# print(hashed_password)

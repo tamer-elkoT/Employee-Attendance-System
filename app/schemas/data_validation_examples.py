@@ -167,3 +167,6 @@ print(user.model_dump_json(indent=2))
 # )
 
 # print(post)
+
+import secrets
+print(secrets.token_urlsafe(32))

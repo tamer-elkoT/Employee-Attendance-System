@@ -224,3 +224,7 @@ app/test_settings.py
 *.jpg
 *.png
 .DS_Store
+
+app\schemas\data_validation_examples.py
+app\core\test_security.py
+app\models\test_employee.py

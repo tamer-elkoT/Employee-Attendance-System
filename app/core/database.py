@@ -3,9 +3,8 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
 
 # Create the SQLAlchemy engine using the database URL from settings
-# The connect_args parameter is used here to allow SQLite to be used in a multi-threaded environment.
-# For other databases, this parameter may not be necessary.
-engine = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False})
+# PostgreSQL Connection
+engine = create_engine(settings.DATABASE_URL) #Creates a connection engine to your database (PostgreSQL in this case). Think of it as the “bridge” between Python and the database.
 # Create a configured "Session" class
 # This class will be used to create new database sessions
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

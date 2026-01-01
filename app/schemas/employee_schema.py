@@ -1,7 +1,13 @@
-from pydantic import BaseModel, EmailStr, Field, SecretStr
-from typing import Optional 
+from pydantic import (
+    BaseModel,
+      EmailStr,
+        Field,
+          SecretStr,
+            field_validator,
+              ValidationError)
+from typing import Optional , Annotated
 from datetime import datetime
-from typing import Annotated
+import re
 
 class EmployeeBase(BaseModel):
     first_name: str = Field(..., min_length=2)
@@ -13,7 +19,23 @@ class EmployeeBase(BaseModel):
     phone_number: Optional[str] = None
 
 class EmployeeCreate(EmployeeBase):
-    password: SecretStr # password is stored as a SecretStr to prevent accidental exposure in logs or error messages and hide its value when printed.
+    password: SecretStr = Field(..., min_length=8, max_length=72)# password is stored as a SecretStr to prevent accidental exposure in logs or error messages and hide its value when printed.
+
+    @field_validator("password")
+    def validate_password(cls, v: SecretStr) -> SecretStr:
+        pwd = v.get_secret_value()
+        if len(pwd) > 72:
+            raise ValueError("Password must not exceed 72 characters.")
+        if not re.search(r"[A-Z]", pwd):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not re.search(r"[a-z]", pwd):
+            raise ValueError("Password must contain at least one lowercase letter.")
+        if not re.search(r"[0-9]",pwd):
+            raise ValueError("Password must contain at least one digit.")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", pwd):
+            raise ValueError("Password must contain at least one special character.")
+        return v
+
 
 class EmployeeResponse(EmployeeBase):
     id: int
@@ -25,16 +47,23 @@ class EmployeeResponse(EmployeeBase):
     class Config:
         from_attributes = True
 
-emp1 = EmployeeBase(
-    first_name="John",
-    last_name="Doe",
-    email="joheahmed@gmail.com",
-    department="hello",
-    username="johndoe",
-    job_title="Software Engineer",
-    phone_number="123-456-7890"
-)
+
 # print(emp1.model_dump_json(indent=2)) # Test EmployeeBase model
+from pydantic import ValidationError
+
+try:
+    emp = EmployeeCreate(
+        first_name="John",
+        last_name="Doe",
+        email="john@example.com",
+        department="Engineering",
+        username="johndoe",
+        password=SecretStr("MyoPass123#")  # Valid password
+    )
+    print("Created:", emp)
+except ValidationError as e:
+    print("Error:", e)
+
 
 # Frontend
 #   |

@@ -4,7 +4,8 @@ from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 # File : To specify that this variable is File
 # Form : Tor recieve form data like (name, department)
 # Depends : Used for database session --> dependency injection
-from sqlalchemy.orm import Session, desc
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
 from typing import List
 from app.core import database, security
 from app.models.employee import Employee, AttendanceLog
@@ -40,7 +41,7 @@ async def register(
     # Password Hashing
     pwd_hash = None
     if valid_data.password:
-        pwd_hash = security.get_password_hash(valid_data.password)
+        pwd_hash = security.get_password_hash(valid_data.password.get_secret_value())
     # Add new Employee in Table Employee in the DataBase
     new_employee = Employee(
         first_name=valid_data.first_name,
@@ -93,7 +94,7 @@ async def recognize(
     
 # Endpoint 3 : Get Employees_id
 @router.get("/history/{employee_id}")
-def get_history(employee_id: int, skip: int =0, limit: int = 10, dp: Session = Depends(database.get_db)):
+def get_history(employee_id: int, skip: int =0, limit: int = 10, db: Session = Depends(database.get_db)):
     """Get attendance history for a specific employee."""
     # Starts a query on the Employee table to find the employee with the given employee_id
     emp = db.query(Employee).filter(Employee.id == employee_id).first()

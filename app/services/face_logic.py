@@ -6,6 +6,7 @@ import os
 from mtcnn import MTCNN # Import MTCNN for face detection (Multi-Task Cascaded Convolutional Neural Network)
 from app.core.config import settings
 import asyncio
+from fastapi import HTTPException, status
 # 1. Initialize Smart Detector (Global)
 # This loads the heavy Neural Network once when the app starts.
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # Hide TensorFlow warnings
@@ -28,7 +29,9 @@ async  def detect_faces(files):
 
     best_confidence = 0.0
     best_encoding = None
-    best_index = -1
+    best_index = None
+    best_encoding_bytes = None
+    
 
     # Iterate over the 5 photos
     for i , file in enumerate(files):
@@ -79,6 +82,12 @@ async  def detect_faces(files):
 
             except IndexError:
                 continue
+        # Add exception if no face was found in any image
+        if best_encoding_bytes is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No face detected in the uploaded images."
+            )
 
     return best_encoding_bytes, best_index, best_confidence
 
@@ -140,7 +149,7 @@ def find_match(known_employees, live_encoding_bytes):
             [known_encoding], live_encoding
         )[0] # face_distance returns a list of distances
 
-        print(f"Debug: checking {emp.name} ... Distance: {distance:.4f} (Tolerance: {settings.FACE_TOLERANCE})" )
+        print(f"Debug: checking {emp.display_name} ... Distance: {distance:.4f} (Tolerance: {settings.FACE_TOLERANCE})" )
         if distance < settings.FACE_TOLERANCE:
 
             return emp, known_employees.index(emp), distance

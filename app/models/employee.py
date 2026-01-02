@@ -11,7 +11,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base # Import the Base class from the database module
 # The Base class is used to define the declarative models for SQLAlchemy
-import datetime
+
 # Define the Employee model class, inheriting from Base
 class Employee(Base):
     __tablename__ = "employees"
@@ -36,7 +36,7 @@ class Employee(Base):
     created_at = Column(DateTime, default=datetime.now) # Column to store the last seen timestamp
     
     # Relationship to Attendance records
-    attendance_logs = relationship("Attendance", back_populates="employee")
+    attendance_logs = relationship("AttendanceLog", back_populates="employee")
 
     @property 
     def display_name(self) -> str:
@@ -55,4 +55,3 @@ class AttendanceLog(Base):
 
     # Relationship back to Employee
     employee = relationship("Employee", back_populates="attendance_logs")
-    

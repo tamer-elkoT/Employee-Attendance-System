@@ -1,281 +1,310 @@
 import streamlit as st
 import requests
+import pandas as pd
+import json
 import time
 from datetime import datetime
 
 # --- CONFIGURATION ---
-API_URL = "http://127.0.0.1:8000/api"
-st.set_page_config(page_title="Face Recognition Attendance System", page_icon="🛡️", layout="wide")
+API_URL = "http://127.0.0.1:8000/api"  # Update if using Ngrok (e.g., https://xyz.ngrok-free.app/api)
+st.set_page_config(
+    page_title="Sentinel Pro",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-# --- PROFESSIONAL CSS STYLING ---
+# --- CUSTOM CSS (Professional Theme) ---
 st.markdown("""
 <style>
-    /* Global Font & Background */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
-        color: #171717; /* Darker Text */
     }
     
+    /* Background & Main Layout */
     .stApp {
-        background: linear-gradient(to bottom right, #f8f9fa, #e9ecef);
+        background-color: #f8fafc;
     }
-
-    /* Card Styling with Animation */
-    .css-1r6slb0, .stForm {
+    
+    /* Cards and Containers */
+    .css-1r6slb0, div[data-testid="stForm"] {
         background-color: white;
         padding: 2rem;
         border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        animation: fadeIn 0.8s ease-in-out;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e2e8f0;
     }
 
-    /* Headings */
+    /* Headers */
     h1, h2, h3 {
-        color: #111827; /* Very Dark Blue/Black */
-        font-weight: 700 !important;
+        color: #0f172a;
+        font-weight: 700;
     }
     
     /* Metrics Styling */
+    div[data-testid="stMetric"] {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
     [data-testid="stMetricValue"] {
-        font-size: 28px;
+        color: #2563EB; /* Brand Blue */
         font-weight: 700;
-        color: #2563EB; /* Professional Blue */
     }
 
     /* Custom Buttons */
-    .stButton>button {
+    .stButton > button {
         background-color: #2563EB;
         color: white;
-        border-radius: 8px;
-        height: 48px;
-        font-weight: 600;
         border: none;
-        transition: all 0.3s ease;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.2s;
     }
-    .stButton>button:hover {
-        background-color: #1D4ED8;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-    }
-
-    /* Animations */
-    @keyframes fadeIn {
-        0% { opacity: 0; transform: translateY(10px); }
-        100% { opacity: 1; transform: translateY(0); }
+    .stButton > button:hover {
+        background-color: #1d4ed8;
+        transform: translateY(-1px);
     }
     
-    /* Status Box Colors */
-    .stSuccess { background-color: #ECFDF5; border-left: 5px solid #10B981; color: #065F46; }
-    .stError { background-color: #FEF2F2; border-left: 5px solid #EF4444; color: #991B1B; }
-    .stInfo { background-color: #EFF6FF; border-left: 5px solid #3B82F6; color: #1E40AF; }
-
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background-color: #1e293b;
+        color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SESSION STATE INITIALIZATION ---
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
-if 'user_info' not in st.session_state:
-    st.session_state['user_info'] = {}
+# --- SESSION STATE MANAGEMENT ---
+if 'user_session' not in st.session_state:
+    st.session_state.user_session = None
 if 'page' not in st.session_state:
-    st.session_state['page'] = 'login'
-if 'login_time' not in st.session_state:
-    st.session_state['login_time'] = None
+    st.session_state.page = 'login'
+if 'reg_photos' not in st.session_state:
+    st.session_state.reg_photos = []
 
-# --- HELPER FUNCTIONS ---
-def switch_page(page_name):
-    st.session_state['page'] = page_name
+# --- NAVIGATION FUNCTIONS ---
+def navigate_to(page):
+    st.session_state.page = page
     st.rerun()
 
 def logout():
-    st.session_state['logged_in'] = False
-    st.session_state['user_info'] = {}
-    st.session_state['login_time'] = None
-    switch_page('login')
+    st.session_state.user_session = None
+    st.session_state.reg_photos = []
+    navigate_to('login')
 
-def get_greeting():
-    hour = datetime.now().hour
-    if hour < 12: return "Good Morning"
-    elif hour < 18: return "Good Afternoon"
-    else: return "Good Evening"
+# --- API HELPERS ---
+def api_login(file_bytes):
+    try:
+        files = {"file": file_bytes}
+        response = requests.post(f"{API_URL}/recognize", files=files)
+        return response
+    except requests.exceptions.ConnectionError:
+        return None
+
+def api_register(data, files_list):
+    try:
+        # Prepare files list for FastAPI (List[UploadFile])
+        files_payload = [('files', (f'img{i}.jpg', f, 'image/jpeg')) for i, f in enumerate(files_list)]
+        payload = {"employee_data": json.dumps(data)}
+        response = requests.post(f"{API_URL}/register", data=payload, files=files_payload)
+        return response
+    except requests.exceptions.ConnectionError:
+        return None
 
 # --- PAGE: LOGIN ---
-def login_page():
-    # Centered Layout
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
+def show_login():
+    col1, col2 = st.columns([1, 1.5])
+
+    with col1:
+        st.image("https://cdn-icons-png.flaticon.com/512/9326/9326966.png", width=80)
+        st.title("Sentinel Pro")
+        st.markdown("""
+        ### AI-Powered Workforce Management
+        Secure biometric access control and automated attendance tracking system.
+        
+        **Instructions:**
+        1. Ensure you are well-lit.
+        2. Look directly at the camera.
+        3. Click 'Take Photo' to login.
+        """)
+        
+        st.info("Don't have an account?")
+        if st.button("📝 Register New Employee"):
+            navigate_to('register')
+
     with col2:
-        st.markdown("<h1 style='text-align: center;'>🛡️ Face Recognition Attendance System</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #6B7280;'>Secure AI-Powered Biometric Access</p>", unsafe_allow_html=True)
-        st.divider()
+        st.markdown("### 🔐 Biometric Verification")
+        img_file = st.camera_input("Scan Face", key="login_cam", label_visibility="hidden")
 
-        # Tabs for cleaner UI
-        tab1, tab2 = st.tabs(["🔑 Login", "📝 Register"])
-        
-        with tab1:
-            st.info("Look directly at the camera to verify your identity.")
-            img_file = st.camera_input("Biometric Scan", key="login_cam", label_visibility="hidden")
-            
-            if img_file:
-                with st.spinner("🔄 Verifying Biometrics..."):
-                    try:
-                        files = {"file": img_file.getvalue()}
-                        res = requests.post(f"{API_URL}/recognize", files=files)
-                        data = res.json()
-                        
-                        if data.get('status') == 'success':
-                            # Success Logic
-                            st.session_state['logged_in'] = True
-                            st.session_state['user_info'] = data
-                            st.session_state['login_time'] = datetime.now().strftime("%I:%M %p")
-                            
-                            st.success(f"✅ Identity Verified: {data['name']}")
-                            time.sleep(1)
-                            switch_page('dashboard')
-                        else:
-                            st.error("❌ Access Denied: User not recognized.")
-                    except Exception as e:
-                        st.error(f"⚠️ Server Error: {e}")
+        if img_file:
+            with st.spinner("Authenticating biometric data..."):
+                response = api_login(img_file.getvalue())
+                
+                if response and response.status_code == 200:
+                    data = response.json()
+                    if data.get("status") == "success":
+                        st.session_state.user_session = data
+                        st.success(f"Welcome back, {data['name']}!")
+                        time.sleep(1)
+                        navigate_to('dashboard')
+                    else:
+                        st.error(f"Access Denied: {data.get('msg', 'Unknown user')}")
+                elif response:
+                    st.error(f"Server Error: {response.text}")
+                else:
+                    st.error("Could not connect to backend server.")
 
-        with tab2:
-            st.write("New employee? Create your secure profile.")
-            if st.button("Start Registration Process"):
-                switch_page('register')
+# --- PAGE: REGISTER ---
+def show_register():
+    st.markdown("## 📝 New Employee Onboarding")
+    st.caption("Complete the profile details and capture biometric data.")
 
-# --- PAGE: REGISTRATION (Multi-Shot) ---
-def register_page():
-    st.markdown("## 📝 New Profile Registration")
-    st.markdown("---")
-    
-    if 'reg_photos' not in st.session_state:
-        st.session_state['reg_photos'] = []
-    
-    col_cam, col_form = st.columns([1.5, 1])
-    
+    col_form, col_cam = st.columns([1.5, 1])
+
     with col_form:
-        st.markdown("### 👤 User Details")
-        with st.form("reg_details"):
-            name = st.text_input("Full Name", placeholder="e.g. John Doe")
-            dept = st.text_input("Department", placeholder="e.g. Engineering")
-            submitted = st.form_submit_button("Confirm Details (Step 1)")
+        with st.form("reg_form"):
+            st.subheader("1. Profile Details")
+            c1, c2 = st.columns(2)
+            fname = c1.text_input("First Name")
+            lname = c2.text_input("Last Name")
             
-            if submitted:
-                if name and dept:
-                    st.session_state['reg_name'] = name
-                    st.session_state['reg_dept'] = dept
-                    st.success("Details saved. Now capture photos.")
-                else:
-                    st.warning("Please fill all fields.")
+            email = st.text_input("Email Address")
+            
+            # Matches Pydantic Regex
+            dept = st.selectbox("Department", [
+                "Engineering", "Sales", "HR", "Marketing", "Finance", 
+                "IT", "Operations", "Management", "Support", "Law", "Medical"
+            ])
+            
+            job = st.text_input("Job Title")
+            phone = st.text_input("Phone Number")
+            password = st.text_input("Password", type="password", help="Min 8 chars, 1 Upper, 1 Special")
 
-        # Progress Bar
-        progress = len(st.session_state['reg_photos']) / 5
-        st.progress(progress, text=f"Photos Captured: {len(st.session_state['reg_photos'])} / 5")
-        
-        if len(st.session_state['reg_photos']) >= 5:
-            if st.button("🚀 Finalize Registration", type="primary"):
-                if 'reg_name' in st.session_state:
-                    with st.spinner("Processing & Encrypting..."):
-                        try:
-                            files_to_send = []
-                            for i, pic in enumerate(st.session_state['reg_photos']):
-                                files_to_send.append(('files', (f'photo_{i}.jpg', pic.getvalue(), 'image/jpeg')))
-                            
-                            payload = {'name': st.session_state['reg_name'], 'department': st.session_state['reg_dept']}
-                            res = requests.post(f"{API_URL}/register", data=payload, files=files_to_send)
-                            
-                            if res.status_code == 200 and res.json().get('status') == 'success':
-                                st.balloons()
-                                st.success("✅ Registration Complete!")
-                                time.sleep(2)
-                                st.session_state['reg_photos'] = []
-                                switch_page('login')
-                            else:
-                                st.error(f"Failed: {res.json().get('msg')}")
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-                else:
-                    st.error("Please fill Name & Dept first.")
-        
-        if st.button("⬅️ Cancel"):
-            st.session_state['reg_photos'] = []
-            switch_page('login')
+            details_submitted = st.form_submit_button("Verify Details")
 
     with col_cam:
-        if len(st.session_state['reg_photos']) < 5:
-            st.info(f"📸 Capture Angle {len(st.session_state['reg_photos']) + 1}/5")
-            picture = st.camera_input("Register Cam", key=f"cam_{len(st.session_state['reg_photos'])}")
+        st.subheader("2. Biometric Capture")
+        st.info("We need 5 photos to train the AI model.")
+        
+        # Progress Logic
+        current_photos = len(st.session_state.reg_photos)
+        st.progress(current_photos / 5, text=f"Captured: {current_photos}/5")
+
+        if current_photos < 5:
+            picture = st.camera_input("Capture", key=f"reg_cam_{current_photos}")
             if picture:
-                st.session_state['reg_photos'].append(picture)
+                st.session_state.reg_photos.append(picture.getvalue())
                 st.rerun()
         else:
-            st.success("✅ Capture Complete!")
-            # Show Grid of photos
-            cols = st.columns(3)
-            for i, p in enumerate(st.session_state['reg_photos']):
-                cols[i%3].image(p, width=100)
+            st.success("✅ Photos captured successfully!")
+            st.image(st.session_state.reg_photos[0], caption="Primary ID Photo", width=150)
+            
+            if st.button("🚀 Finalize Registration"):
+                if not (fname and lname and email and password):
+                    st.error("Please fill in all profile details.")
+                else:
+                    reg_data = {
+                        "first_name": fname, "last_name": lname,
+                        "email": email, "department": dept,
+                        "job_title": job, "phone_number": phone,
+                        "password": password,
+                        "username": email.split('@')[0] # Auto-generate username
+                    }
+                    
+                    with st.spinner("Encrypting data & Registering..."):
+                        response = api_register(reg_data, st.session_state.reg_photos)
+                        
+                        if response and response.status_code == 200:
+                            st.balloons()
+                            st.success("Registration Complete!")
+                            time.sleep(2)
+                            st.session_state.reg_photos = []
+                            navigate_to('login')
+                        elif response:
+                            st.error(f"Error: {response.json().get('detail', 'Registration failed')}")
+                        else:
+                            st.error("Connection failed.")
+                            
+    if st.button("← Back to Login"):
+        st.session_state.reg_photos = []
+        navigate_to('login')
 
 # --- PAGE: DASHBOARD ---
-def dashboard_page():
-    user = st.session_state['user_info']
-    login_time = st.session_state.get('login_time', "N/A")
-    today_date = datetime.now().strftime("%A, %d %B %Y")
+def show_dashboard():
+    user = st.session_state.user_session
     
-    # --- Sidebar Info ---
+    # Sidebar
     with st.sidebar:
         st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=80)
-        st.markdown(f"### {user.get('name', 'User')}")
-        st.markdown(f"**{user.get('dept', 'Unknown')} Department**")
+        st.markdown(f"### {user['name']}")
+        st.markdown(f"**{user['department']}**")
         st.divider()
-        st.markdown(f"📅 **{today_date}**")
-        st.markdown(f"⏰ **{datetime.now().strftime('%H:%M')}**")
-        st.divider()
-        if st.button("🚪 Secure Logout"):
+        if st.button("🚪 Logout", use_container_width=True):
             logout()
 
-    # --- Main Dashboard ---
-    st.markdown(f"## {get_greeting()}, **{user.get('name', '').split()[0]}**! 👋")
-    st.markdown("Here is your daily attendance summary.")
-    st.markdown("---")
-
-    # Metrics
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Current Status", "✅ Checked In", delta="Active")
-    c2.metric("Check-In Time", login_time, delta="On Time")
-    c3.metric("Attendance Rate", "98%", "+2%")
-    c4.metric("Pending Tasks", "3", "Normal", delta_color="off")
-
-    st.markdown("### 📊 Activity Log")
+    # Main Content
+    st.title("📊 Employee Dashboard")
+    st.markdown(f"Welcome back, **{user['name'].split()[0]}**!")
     
-    # Styled Table
-    # We add the "Current Login" as the top row dynamically
-    data = [
-        {"Event": "Login Success", "Time": login_time, "Date": datetime.now().strftime("%Y-%m-%d"), "Status": "Verified"},
-        {"Event": "System Check", "Time": "08:55 AM", "Date": datetime.now().strftime("%Y-%m-%d"), "Status": "Auto"},
-        {"Event": "Logout", "Time": "05:00 PM", "Date": "Yesterday", "Status": "User"},
-    ]
-    st.dataframe(data, use_container_width=True)
+    # Metrics Row
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Check-In Status", user.get('attendance_status', 'N/A'))
+    m2.metric("Attendance Score", f"{user.get('attendance_score', 100):.1f}")
+    m3.metric("Current Time", datetime.now().strftime("%H:%M"))
+    m4.metric("Notifications", "0 New")
 
-    # Quick Actions
-    st.markdown("### ⚡ Quick Actions")
-    b1, b2, b3 = st.columns(3)
-    if b1.button("📄 Download Report"):
-        st.toast("Downloading Monthly Report...")
-    if b2.button("🔧 Report Issue"):
-        st.toast("Support ticket created.")
-    if b3.button("📅 View Calendar"):
-        st.toast("Opening Calendar...")
+    # History Section
+    st.divider()
+    st.subheader("🗓️ Recent Activity Logs")
 
-# --- ROUTER ---
-def main():
-    if st.session_state['logged_in']:
-        dashboard_page()
-    elif st.session_state['page'] == 'register':
-        register_page()
+    # Note: To make History work fully, the backend /recognize endpoint
+    # needs to return the 'id' of the employee. 
+    # Currently assuming user['id'] might not be present in the recognize response provided in prompt.
+    # If not present, we can't fetch history. 
+    # Logic below tries to fetch if ID is available (mocking capability).
+    
+    employee_id = user.get('id') # Ensure backend /recognize returns this!
+    
+    if employee_id:
+        try:
+            res = requests.get(f"{API_URL}/history/{employee_id}")
+            if res.status_code == 200:
+                history_data = res.json()
+                logs = history_data.get('attendance_logs', [])
+                if logs:
+                    df = pd.DataFrame(logs)
+                    st.dataframe(
+                        df, 
+                        column_config={
+                            "date": "Date",
+                            "time": "Check-in Time",
+                            "status": st.column_config.TextColumn("Status")
+                        },
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                else:
+                    st.info("No attendance records found.")
+        except Exception:
+            st.warning("Could not load history.")
     else:
-        login_page()
+        st.warning("History unavailable (Employee ID missing in session).")
+
+# --- MAIN ROUTER ---
+def main():
+    if st.session_state.page == 'login':
+        show_login()
+    elif st.session_state.page == 'register':
+        show_register()
+    elif st.session_state.page == 'dashboard':
+        if st.session_state.user_session:
+            show_dashboard()
+        else:
+            navigate_to('login')
 
 if __name__ == "__main__":
     main()
-

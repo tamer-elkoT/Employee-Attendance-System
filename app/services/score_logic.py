@@ -70,8 +70,5 @@ def mark_attendance(db: Session, employee_id: int):
         raise
 
 
-    return {
-        "status": status,
-        "attendance_score": emp.attendance_score
-    }
+    return status, emp.attendance_score
 

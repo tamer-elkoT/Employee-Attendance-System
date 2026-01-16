@@ -1,310 +1,257 @@
 import streamlit as st
 import requests
-import pandas as pd
 import json
 import time
+import pandas as pd
 from datetime import datetime
 
-# --- CONFIGURATION ---
-API_URL = "http://127.0.0.1:8000/api"  # Update if using Ngrok (e.g., https://xyz.ngrok-free.app/api)
+# ================== CONFIG ==================
+API_URL = "http://127.0.0.1:8000/api"
+
 st.set_page_config(
-    page_title="Sentinel Pro",
-    page_icon="🛡️",
+    page_title="EmpVision",
+    page_icon="👁️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# --- CUSTOM CSS (Professional Theme) ---
+# ================== FORCE LIGHT THEME & VISIBILITY ==================
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
-    html, body, [class*="css"] {
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+    /* 1. FORCE ALL TEXT DARK */
+    html, body, p, div, span, h1, h2, h3, h4, h5, h6 {
         font-family: 'Inter', sans-serif;
+        color: #0f172a !important; /* Dark Slate */
     }
-    
-    /* Background & Main Layout */
+
+    /* 2. BACKGROUNDS */
     .stApp {
         background-color: #f8fafc;
     }
     
-    /* Cards and Containers */
-    .css-1r6slb0, div[data-testid="stForm"] {
-        background-color: white;
-        padding: 2rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        border: 1px solid #e2e8f0;
-    }
-
-    /* Headers */
-    h1, h2, h3 {
-        color: #0f172a;
-        font-weight: 700;
-    }
-    
-    /* Metrics Styling */
+    /* 3. METRIC CARDS FIX (The Invisible Text Fix) */
     div[data-testid="stMetric"] {
-        background-color: white;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    }
-    [data-testid="stMetricValue"] {
-        color: #2563EB; /* Brand Blue */
-        font-weight: 700;
-    }
-
-    /* Custom Buttons */
-    .stButton > button {
-        background-color: #2563EB;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-weight: 600;
-        transition: all 0.2s;
-    }
-    .stButton > button:hover {
-        background-color: #1d4ed8;
-        transform: translateY(-1px);
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        padding: 15px !important;
+        border-radius: 10px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
     }
     
-    /* Sidebar */
+    /* Force Metric Label (Top text) to be Grey */
+    div[data-testid="stMetricLabel"] > div > p {
+        color: #64748b !important; /* Cool Grey */
+        font-size: 14px !important;
+    }
+    
+    /* Force Metric Value (Big text) to be Blue */
+    div[data-testid="stMetricValue"] > div {
+        color: #2563EB !important; /* Brand Blue */
+        font-size: 28px !important;
+        font-weight: 700 !important;
+    }
+
+    /* 4. INPUT FIELDS (Force White Background, Dark Text) */
+    input, .stTextInput > div > div > input {
+        color: #0f172a !important;
+        background-color: #ffffff !important;
+    }
+    
+    /* 5. SIDEBAR FIX */
     section[data-testid="stSidebar"] {
-        background-color: #1e293b;
-        color: white;
+        background-color: #ffffff !important;
+        border-right: 1px solid #e2e8f0;
+    }
+    section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span {
+        color: #0f172a !important;
+    }
+
+    /* 6. BUTTONS */
+    .stButton > button {
+        background-color: #2563EB !important;
+        color: white !important;
+        border: none;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SESSION STATE MANAGEMENT ---
-if 'user_session' not in st.session_state:
-    st.session_state.user_session = None
-if 'page' not in st.session_state:
-    st.session_state.page = 'login'
-if 'reg_photos' not in st.session_state:
-    st.session_state.reg_photos = []
+# ================== SESSION STATE ==================
+if "page" not in st.session_state: st.session_state.page = "login"
+if "user" not in st.session_state: st.session_state.user = None
+if "photos" not in st.session_state: st.session_state.photos = []
 
-# --- NAVIGATION FUNCTIONS ---
-def navigate_to(page):
-    st.session_state.page = page
-    st.rerun()
-
-def logout():
-    st.session_state.user_session = None
-    st.session_state.reg_photos = []
-    navigate_to('login')
-
-# --- API HELPERS ---
-def api_login(file_bytes):
+# ================== API HELPERS ==================
+def login_api(img):
     try:
-        files = {"file": file_bytes}
-        response = requests.post(f"{API_URL}/recognize", files=files)
-        return response
-    except requests.exceptions.ConnectionError:
+        return requests.post(f"{API_URL}/recognize", files={"file": img})
+    except Exception:
         return None
 
-def api_register(data, files_list):
+def register_api(data, images):
     try:
-        # Prepare files list for FastAPI (List[UploadFile])
-        files_payload = [('files', (f'img{i}.jpg', f, 'image/jpeg')) for i, f in enumerate(files_list)]
+        files = [("files", (f"img{i}.jpg", img, "image/jpeg")) for i, img in enumerate(images)]
         payload = {"employee_data": json.dumps(data)}
-        response = requests.post(f"{API_URL}/register", data=payload, files=files_payload)
-        return response
-    except requests.exceptions.ConnectionError:
+        return requests.post(f"{API_URL}/register", data=payload, files=files)
+    except Exception:
         return None
 
-# --- PAGE: LOGIN ---
-def show_login():
-    col1, col2 = st.columns([1, 1.5])
+def get_history_api(employee_id):
+    try:
+        return requests.get(f"{API_URL}/history/{employee_id}")
+    except Exception:
+        return None
+
+# ================== PAGES ==================
+
+def login_page():
+    col1, col2 = st.columns([1, 1.2])
 
     with col1:
-        st.image("https://cdn-icons-png.flaticon.com/512/9326/9326966.png", width=80)
-        st.title("Sentinel Pro")
+        st.markdown("## 👁️ EmpVision")
+        st.markdown("### Next-Gen Workforce Intelligence")
         st.markdown("""
-        ### AI-Powered Workforce Management
-        Secure biometric access control and automated attendance tracking system.
-        
-        **Instructions:**
-        1. Ensure you are well-lit.
-        2. Look directly at the camera.
-        3. Click 'Take Photo' to login.
+        EmpVision replaces outdated punch cards with secure, AI-powered facial recognition.
         """)
         
-        st.info("Don't have an account?")
-        if st.button("📝 Register New Employee"):
-            navigate_to('register')
+        if st.button("📝 Create New Profile"):
+            st.session_state.page = "register"
+            st.rerun()
 
     with col2:
-        st.markdown("### 🔐 Biometric Verification")
-        img_file = st.camera_input("Scan Face", key="login_cam", label_visibility="hidden")
+        st.markdown("### 🔐 Secure Login")
+        cam = st.camera_input("Scan Face", label_visibility="hidden")
 
-        if img_file:
-            with st.spinner("Authenticating biometric data..."):
-                response = api_login(img_file.getvalue())
+        if cam:
+            with st.spinner("🔄 Authenticating..."):
+                res = login_api(cam.getvalue())
                 
-                if response and response.status_code == 200:
-                    data = response.json()
+                if res and res.status_code == 200:
+                    data = res.json()
                     if data.get("status") == "success":
-                        st.session_state.user_session = data
-                        st.success(f"Welcome back, {data['name']}!")
+                        st.session_state.user = data
+                        st.success(f"✅ Verified: {data['name']}")
                         time.sleep(1)
-                        navigate_to('dashboard')
+                        st.session_state.page = "dashboard"
+                        st.rerun()
                     else:
-                        st.error(f"Access Denied: {data.get('msg', 'Unknown user')}")
-                elif response:
-                    st.error(f"Server Error: {response.text}")
+                        st.error(f"❌ Access Denied: {data.get('msg', 'Unknown Error')}")
                 else:
-                    st.error("Could not connect to backend server.")
+                    st.error("⚠️ Server Connection Failed")
 
-# --- PAGE: REGISTER ---
-def show_register():
-    st.markdown("## 📝 New Employee Onboarding")
-    st.caption("Complete the profile details and capture biometric data.")
-
+def register_page():
+    st.markdown("## 📝 Employee Onboarding")
+    
     col_form, col_cam = st.columns([1.5, 1])
 
     with col_form:
         with st.form("reg_form"):
-            st.subheader("1. Profile Details")
+            st.subheader("1. Profile Information")
             c1, c2 = st.columns(2)
             fname = c1.text_input("First Name")
             lname = c2.text_input("Last Name")
-            
             email = st.text_input("Email Address")
-            
-            # Matches Pydantic Regex
-            dept = st.selectbox("Department", [
-                "Engineering", "Sales", "HR", "Marketing", "Finance", 
-                "IT", "Operations", "Management", "Support", "Law", "Medical"
-            ])
-            
+            dept = st.selectbox("Department", ["Engineering", "Sales", "HR", "Marketing", "Finance", "IT", "Operations", "Management", "Support", "Law", "Medical"])
             job = st.text_input("Job Title")
             phone = st.text_input("Phone Number")
-            password = st.text_input("Password", type="password", help="Min 8 chars, 1 Upper, 1 Special")
-
-            details_submitted = st.form_submit_button("Verify Details")
+            password = st.text_input("Password", type="password")
+            
+            submit_details = st.form_submit_button("Verify Details")
 
     with col_cam:
         st.subheader("2. Biometric Capture")
-        st.info("We need 5 photos to train the AI model.")
-        
-        # Progress Logic
-        current_photos = len(st.session_state.reg_photos)
-        st.progress(current_photos / 5, text=f"Captured: {current_photos}/5")
+        captured_count = len(st.session_state.photos)
+        st.progress(captured_count / 5, text=f"Photos: {captured_count}/5")
 
-        if current_photos < 5:
-            picture = st.camera_input("Capture", key=f"reg_cam_{current_photos}")
-            if picture:
-                st.session_state.reg_photos.append(picture.getvalue())
+        if captured_count < 5:
+            st.info("📸 Please take 5 photos.")
+            pic = st.camera_input("Capture", key=f"cam_{captured_count}")
+            if pic:
+                st.session_state.photos.append(pic.getvalue())
                 st.rerun()
         else:
-            st.success("✅ Photos captured successfully!")
-            st.image(st.session_state.reg_photos[0], caption="Primary ID Photo", width=150)
-            
-            if st.button("🚀 Finalize Registration"):
-                if not (fname and lname and email and password):
-                    st.error("Please fill in all profile details.")
-                else:
-                    reg_data = {
-                        "first_name": fname, "last_name": lname,
-                        "email": email, "department": dept,
-                        "job_title": job, "phone_number": phone,
-                        "password": password,
-                        "username": email.split('@')[0] # Auto-generate username
+            st.success("✅ Capture Complete!")
+            if st.button("🚀 Finalize"):
+                if fname and lname and email and password:
+                    data = {
+                        "first_name": fname, "last_name": lname, "email": email,
+                        "department": dept, "job_title": job, "phone_number": phone,
+                        "password": password, "username": email.split("@")[0]
                     }
-                    
-                    with st.spinner("Encrypting data & Registering..."):
-                        response = api_register(reg_data, st.session_state.reg_photos)
-                        
-                        if response and response.status_code == 200:
+                    with st.spinner("Registering..."):
+                        res = register_api(data, st.session_state.photos)
+                        if res and res.status_code == 200:
                             st.balloons()
-                            st.success("Registration Complete!")
+                            st.success("Registration Successful!")
+                            st.session_state.photos = []
                             time.sleep(2)
-                            st.session_state.reg_photos = []
-                            navigate_to('login')
-                        elif response:
-                            st.error(f"Error: {response.json().get('detail', 'Registration failed')}")
+                            st.session_state.page = "login"
+                            st.rerun()
                         else:
-                            st.error("Connection failed.")
-                            
-    if st.button("← Back to Login"):
-        st.session_state.reg_photos = []
-        navigate_to('login')
+                            st.error("Registration Failed")
 
-# --- PAGE: DASHBOARD ---
-def show_dashboard():
-    user = st.session_state.user_session
+    if st.button("⬅ Back to Login"):
+        st.session_state.photos = []
+        st.session_state.page = "login"
+        st.rerun()
+
+def dashboard_page():
+    user = st.session_state.user
     
-    # Sidebar
+    # --- Sidebar ---
     with st.sidebar:
-        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=80)
-        st.markdown(f"### {user['name']}")
-        st.markdown(f"**{user['department']}**")
+        st.title("👁️ EmpVision")
+        st.markdown(f"**{user.get('name', 'User')}**")
+        st.caption(f"{user.get('department', 'General')} Dept")
         st.divider()
         if st.button("🚪 Logout", use_container_width=True):
-            logout()
+            st.session_state.user = None
+            st.session_state.page = "login"
+            st.rerun()
 
-    # Main Content
-    st.title("📊 Employee Dashboard")
-    st.markdown(f"Welcome back, **{user['name'].split()[0]}**!")
+    # --- Main Content ---
+    st.title("📊 Workforce Dashboard")
     
-    # Metrics Row
+    # 1. Overview Metrics
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Check-In Status", user.get('attendance_status', 'N/A'))
-    m2.metric("Attendance Score", f"{user.get('attendance_score', 100):.1f}")
-    m3.metric("Current Time", datetime.now().strftime("%H:%M"))
-    m4.metric("Notifications", "0 New")
-
-    # History Section
-    st.divider()
-    st.subheader("🗓️ Recent Activity Logs")
-
-    # Note: To make History work fully, the backend /recognize endpoint
-    # needs to return the 'id' of the employee. 
-    # Currently assuming user['id'] might not be present in the recognize response provided in prompt.
-    # If not present, we can't fetch history. 
-    # Logic below tries to fetch if ID is available (mocking capability).
+    m1.metric("Status", user.get("attendance_status", "N/A"))
+    m2.metric("Check-in Time", datetime.now().strftime("%H:%M"))
     
-    employee_id = user.get('id') # Ensure backend /recognize returns this!
+    score = user.get("attendance_score", 100.0)
+    m3.metric("Discipline Score", f"{score}%")
+    m4.metric("Notifications", "0")
+
+    st.caption("Attendance Performance")
+    st.progress(int(score) / 100)
+
+    st.divider()
+
+    # 2. History Table
+    st.subheader("Recent Activity")
+    employee_id = user.get("id") 
     
     if employee_id:
-        try:
-            res = requests.get(f"{API_URL}/history/{employee_id}")
-            if res.status_code == 200:
-                history_data = res.json()
-                logs = history_data.get('attendance_logs', [])
-                if logs:
-                    df = pd.DataFrame(logs)
-                    st.dataframe(
-                        df, 
-                        column_config={
-                            "date": "Date",
-                            "time": "Check-in Time",
-                            "status": st.column_config.TextColumn("Status")
-                        },
-                        use_container_width=True,
-                        hide_index=True
-                    )
-                else:
-                    st.info("No attendance records found.")
-        except Exception:
-            st.warning("Could not load history.")
-    else:
-        st.warning("History unavailable (Employee ID missing in session).")
-
-# --- MAIN ROUTER ---
-def main():
-    if st.session_state.page == 'login':
-        show_login()
-    elif st.session_state.page == 'register':
-        show_register()
-    elif st.session_state.page == 'dashboard':
-        if st.session_state.user_session:
-            show_dashboard()
+        res = get_history_api(employee_id)
+        if res and res.status_code == 200:
+            history_data = res.json().get("attendance_logs", [])
+            if history_data:
+                df = pd.DataFrame(history_data)
+                st.dataframe(df, use_container_width=True, hide_index=True)
+            else:
+                st.info("No attendance records found.")
         else:
-            navigate_to('login')
+            st.warning("Unable to fetch history logs.")
 
+# ================== MAIN ROUTER ==================
 if __name__ == "__main__":
-    main()
+    if st.session_state.page == "login":
+        login_page()
+    elif st.session_state.page == "register":
+        register_page()
+    elif st.session_state.page == "dashboard":
+        if st.session_state.user:
+            dashboard_page()
+        else:
+            st.session_state.page = "login"
+            st.rerun()

@@ -95,6 +95,32 @@ cp .env.example .env
 
 ---
 
+# installing Postgresql in ubuntu terminal
+```bash
+sudo apt update
+sudo apt upgrade -y
+sudo apt install postgresql postgresql-contrib -y
+```
+- check that postgresql is installed
+```bash
+sudo systemctl status postgresql
+```
+##### create password 
+```bash
+\password postgres
+```
+insert you password twice
+
+Create The Data base
+```bash
+CREATE DATABASE "EmpVision";
+```
+Quit
+
+```bash
+\q
+```
+
 ## 🚀 Usage Instructions
 
 To run the full system, you will need **two separate terminals**.
@@ -276,31 +302,6 @@ Focus: Moving from laptop to the real world.
 -	Task: Run the "Detection" code on a Raspberry Pi 4/5 mounted at the office door.
 -	Architecture: The Pi does the face scanning (Edge) and sends only the result (or the face encoding) to the Cloud Server to verify.
 
-# installing Postgresql in ubuntu terminal
-```bash
-sudo apt update
-sudo apt upgrade -y
-sudo apt install postgresql postgresql-contrib -y
-```
-- check that postgresql is installed
-```bash
-sudo systemctl status postgresql
-```
-##### create password 
-```bash
-\password postgres
-```
-insert you password twice
-
-Create The Data base
-```bash
-CREATE DATABASE "EmpVision";
-```
-Quit
-
-```bash
-\q
-```
 
 
 

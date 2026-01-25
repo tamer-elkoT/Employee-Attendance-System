@@ -39,8 +39,9 @@ dependencies:
     
     # 4. UI / Frontend
     - streamlit==1.29.0
-
+    
     # 5. Backend Utilities
     - requests==2.32.3        # HTTP Requests
+    - "bcrypt<4.0.0"
     - passlib[bcrypt]==1.7.4 # Password Hashing
     - psycopg2-binary==2.9.9 # PostgreSQL Driver

@@ -105,6 +105,10 @@ sudo apt install postgresql postgresql-contrib -y
 ```bash
 sudo systemctl status postgresql
 ```
+- Enter the data base terminal
+```bash
+sudo -u postgres psql
+```
 ##### create password 
 ```bash
 \password postgres

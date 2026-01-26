@@ -261,53 +261,96 @@ Releases = Milestones
 
 Branches = Work in Progress
 
-# Phases
+# 🚀 Project Roadmap: EmpVision (v2.0)
+
+This roadmap outlines the strategic development plan for **EmpVision**, moving from a foundational prototype to a robust, production-ready workforce intelligence system.
+
+---
+
 ## Phase 1: Core Foundation & Data Integrity
-Focus: Strengthening the backend and database structure.
-1.	Professional Database Migration:
-- Task: Migrate from SQLite to PostgreSQL.
-- Why: SQLite is for testing. PostgreSQL handles concurrent users (hundreds of employees logging in at 9 AM) and offers better security.
-- Tool: Continue using SQLAlchemy but connect it to a PostgreSQL instance.
-2.	Advanced Input Validation:
-- Task: Implement strict Pydantic Schemas for registration.
-- Details: Validate emails (regex), enforce password strength, and ensure phone numbers follow international formats.- 3.	Expanded User Profile:
-- Task: Add columns for Phone, Position, Email, Emergency Contact, and Profile Picture URL.
-- Benefit: Allows HR/Admins to use the system as a mini-HR directory.
-## Phase 2: Business Logic & Rules
-Focus: Converting raw data into useful attendance reports.
-4.	Role-Based Access Control (RBAC):
-- Task: Create two permission levels:
-	- Employee/Student: Can only view their own history.
-	- Admin/HR: Can add users, view everyone's data, search by ID/Name, and export reports.
-5.	Smart Attendance Logic:
--Task: "One Login Per Day" & "Working Hours Calculation."
--Logic:
-	- First Scan (9:00 AM): Mark as "Check-In".
-	- Subsequent Scans: Mark as "Already In" (Prevent duplicate logs) OR treat as "Check-Out" if scanning to leave.
-	- Calculation: Working Hours = Last Check-Out Time - First Check-In Time.
+> **Focus:** Strengthening the backend and database structure.
+
+### 1. Professional Database Migration
+* **Task:** Migrate from SQLite to PostgreSQL.
+* **Why:** SQLite handles limited concurrency. PostgreSQL supports concurrent writes (critical for morning rush hours) and offers robust security features.
+* **Tool:** SQLAlchemy with a PostgreSQL connector (local or hosted).
+
+### 2. Advanced Input Validation
+* **Task:** Implement strict Pydantic Schemas (v2) for registration.
+* **Details:** Validate emails (regex), enforce strong password policies, and standardize phone numbers (E.164).
+
+### 3. Expanded User Profile
+* **Task:** Add schema columns for `Phone`, `Job Title`, `Email`, `Emergency Contact`, and `Profile Picture URL`.
+* **Benefit:** Transforms the system into a searchable mini-HR directory.
+
+---
+
+## Phase 2: AI Core Overhaul & Intelligent Logic (Major Update ⚠️)
+> **Focus:** Replacing legacy AI with a unified YOLOv8 pipeline, enabling video registration, and implementing business rules.
+
+### 4. The "AI Engine" Consolidation (YOLO Integration)
+* **Task:** Completely replace HOG and MTCNN with **YOLOv8 (Nano)**.
+* **Why:** Unifies the tech stack into a single, high-performance model for both detection and enrollment. YOLOv8 offers superior robustness against side angles and low light compared to HOG.
+* **Implementation:**
+    * Remove `dlib` frontal detector and `MTCNN` dependencies.
+    * Integrate `ultralytics` with `yolov8n-face.pt` for CPU-optimized inference.
+    * **Pipeline:** YOLO Detection (Box & Landmarks) → Crop → Face Recognition (ResNet Embedding).
+
+### 5. Smart Video Enrollment (The "Wow" Factor)
+* **Task:** Upgrade the `/register` endpoint to support "Passive Video Registration" instead of static uploads.
+* **Workflow:**
+    1.  User initiates registration; UI opens a video stream.
+    2.  **Auto-Capture:** System automatically extracts the **Best 5 Frames** based on centering, blur score (Laplacian Variance), and eye state (open).
+    3.  **Upload:** Silently uploads the optimal frames to the backend.
+
+### 6. Real-World Camera Connectivity (RTSP)
+* **Task:** Update video capture code to accept **RTSP URLs** alongside webcam IDs.
+* **Benefit:** Allows immediate testing with home IP cameras/security feeds, simulating real-world office conditions (latency, angles) early.
+
+### 7. Smart Attendance Logic & RBAC
+* **Task:** Implement "Check-In/Check-Out" state machine and Role-Based Access Control.
+* **Logic:**
+    * **First Scan:** Check-In.
+    * **Subsequent Scans:** Check-Out (with debounce/cooldown logic).
+* **Permissions:** Employee (View Own) vs. Admin (View All/Export).
+
+---
+
 ## Phase 3: Security & Anti-Spoofing (Critical)
-Focus: Preventing students or employees from cheating using photos/videos.
-6.	Liveness Detection (Anti-Spoofing):
-- Task: Detect if the camera is seeing a real face or a phone screen/printed photo.
-- Method: Use "Blink Detection" (ask user to blink) or "Texture Analysis" (AI models that detect pixelation from screens).
-- Recommendation: Use Silent Face Anti-Spoofing libraries or depth-sensing cameras.
+> **Focus:** Hardening the system against spoofing attacks.
+
+### 8. Liveness Detection
+* **Task:** Detect presentation attacks (photos/screens).
+* **Method:**
+    * **Active:** Challenge-response (e.g., "Blink now").
+    * **Passive:** Texture/Frequency analysis to detect screen pixelation.
+* **Tool:** Leverage YOLO landmarks for blink detection or integrate Silent-Face-Anti-Spoofing.
+
+---
+
 ## Phase 4: Scaling the Interface (Frontend Upgrade)
-Focus: Making it look like a real SaaS product.
-7.	Replace Streamlit with React/Next.js:
-- Task: Rebuild the frontend using React.js (or Next.js).
-- Why: Streamlit is great for data apps, but it is slow for consumer apps. React allows for custom branding, faster animations, and mobile responsiveness.
--	API: Your FastAPI backend remains exactly the same; React just consumes the JSON APIs.
-## phase 5: Deployment & Hardware (Edge Computing)
-Focus: Moving from laptop to the real world.
-8.	Cloud Deployment:
--	Task: Deploy the Backend (FastAPI + DB) to AWS (EC2 or Lambda) or Azure.
--	Storage: Save user profile photos to AWS S3 buckets instead of the database.
-9.	Hardware Integration (Raspberry Pi):
--	Task: Run the "Detection" code on a Raspberry Pi 4/5 mounted at the office door.
--	Architecture: The Pi does the face scanning (Edge) and sends only the result (or the face encoding) to the Cloud Server to verify.
+> **Focus:** Transitioning to a professional Single Page Application (SPA).
 
+### 9. React/Next.js Migration
+* **Task:** Rebuild the frontend using React.js or Next.js.
+* **Why:** Enables a responsive, "app-like" experience with smoother video handling and custom branding compared to Streamlit.
+* **Note:** The backend API remains stable; the frontend simply consumes the existing JSON endpoints.
 
+---
 
+## Phase 5: Deployment & Edge Computing
+> **Focus:** Production deployment and hardware integration.
 
+### 10. Cloud Deployment
+* **Task:** Dockerize backend (FastAPI) and database (PostgreSQL). Deploy to cloud infrastructure (AWS EC2/Lambda + RDS + S3 for images).
+
+### 11. Hardware Integration (Raspberry Pi)
+* **Task:** Deploy the detection module to a Raspberry Pi 5 at the "edge."
+* **Architecture:** Pi runs the optimized YOLOv8n model locally. It transmits only face embeddings or cropped metadata to the cloud for verification, minimizing bandwidth.
+
+---
+
+## Future Enhancements
+* **Model Optimization:** Evaluate newer architectures like **YOLOv12** or **RetinaFace** for specific long-range detection needs (e.g., large halls) if Phase 2 testing reveals limitations.
 
 **Author:** [Tamer Elkot](https://www.google.com/search?q=https://github.com/tamer-elkoT) | **License:** EmpVision

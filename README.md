@@ -33,6 +33,21 @@ EmpyVision/
 ```
 
 ---
+# System Design
+## System Architecture
+![System Architecture Diagram](./assets/Full%20System%20Design.svg)
+
+*Figure 1: High-Level overview of the client-Server-Database architecture.*
+
+## User Scenario (Self-Registeration)
+![Self Regesteration](./assets/User%20Scenario%20Self%20Regesteration.svg)
+
+*Figure 3*
+
+## User Scenario (Check in)
+![Chek In](./assets/User%20Senario%20Check%20In.svg)
+
+*Figure 2*
 
 ## ⚡ Prerequisites
 
